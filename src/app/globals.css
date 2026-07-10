@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  height: 100%;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fade-in 0.15s ease-out; }
+
+@keyframes panel-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.panel-enter { animation: panel-enter 0.15s ease-out; }
