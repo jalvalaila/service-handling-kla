@@ -9,48 +9,39 @@ export const TICKET_STATUS_LABEL: Record<TicketStatus, string> = {
 
 export const TICKET_STATUS_ORDER: TicketStatus[] = ["baru", "diproses", "tunggu_sparepart", "selesai"];
 
-export type TicketPriority = "rendah" | "normal" | "tinggi" | "urgent";
-
-export const PRIORITY_LABEL: Record<TicketPriority, string> = {
-  rendah: "Rendah",
-  normal: "Normal",
-  tinggi: "Tinggi",
-  urgent: "Urgent",
-};
-
 export interface Branch {
   id: string;
   name: string;
   code: string;
+  wa_number: string | null;
   is_active: boolean;
   created_at: string;
 }
 
-export interface Unit {
-  id: string;
-  branch_id: string;
-  name: string;
-  code: string | null;
-  type: string | null;
-  created_at: string;
-}
+export type StokPenjualan = "stok" | "penjualan";
+
+export const STOK_PENJUALAN_LABEL: Record<StokPenjualan, string> = {
+  stok: "Stok",
+  penjualan: "Penjualan",
+};
 
 export interface ServiceTicket {
   id: string;
   branch_id: string;
-  unit_id: string;
-  title: string;
-  description: string | null;
+  tanggal_masuk: string;
+  stok_penjualan: StokPenjualan;
+  brand: string;
+  laptop_type: string;
+  serial_number: string;
+  kendala: string;
+  posisi_unit: string;
+  keterangan: string | null;
   status: TicketStatus;
-  priority: TicketPriority;
   reported_by: string | null;
   reported_by_name: string | null;
-  assigned_to_name: string | null;
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
-  // joined fields (filled client-side)
-  unit_name?: string;
   branch_name?: string;
 }
 
