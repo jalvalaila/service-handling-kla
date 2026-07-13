@@ -60,8 +60,8 @@ export default function OverviewPanel({ onNavigate }: { onNavigate?: (v: any) =>
                     className="w-full text-left px-4 py-3 flex items-center justify-between hover:bg-slate-50"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
-                      <p className="text-xs text-slate-400">{t.branch_name} · {t.unit_name} · dilapor {formatDate(t.created_at)}</p>
+                      <p className="text-sm font-semibold text-slate-900 truncate">{t.no_service} · {t.kode_barang}</p>
+                      <p className="text-xs text-slate-400">{t.branch_name} · SN {t.serial_number} · dilapor {formatDate(t.created_at)}</p>
                     </div>
                     <span className="text-xs font-semibold text-amber-600 shrink-0">{ticketAgeDays(t)} hari</span>
                   </button>

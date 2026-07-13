@@ -1,25 +1,26 @@
 import { supabase } from "./supabase";
-import { ServiceTicket, TicketUpdate, TicketStatus, TicketPriority } from "@/types";
+import { Branch, ServiceTicket, TicketUpdate, TicketStatus, ServiceCategory } from "@/types";
 
-// ─── List tickets (joined with unit + branch name for display) ──────────────
+// ─── List tickets (joined with branch name for display) ──────────────────
 export async function listTickets(filters?: {
   branchId?: string;
   status?: TicketStatus;
+  kategori?: ServiceCategory;
 }): Promise<ServiceTicket[]> {
   let q = supabase
     .from("service_tickets")
-    .select("*, units(name), branches(name)")
+    .select("*, branches(name)")
     .order("created_at", { ascending: false });
 
   if (filters?.branchId) q = q.eq("branch_id", filters.branchId);
   if (filters?.status) q = q.eq("status", filters.status);
+  if (filters?.kategori) q = q.eq("kategori", filters.kategori);
 
   const { data, error } = await q;
   if (error) throw error;
 
   return (data ?? []).map((row: any) => ({
     ...row,
-    unit_name: row.units?.name ?? "-",
     branch_name: row.branches?.name ?? "-",
   })) as ServiceTicket[];
 }
@@ -27,31 +28,36 @@ export async function listTickets(filters?: {
 export async function getTicket(id: string): Promise<ServiceTicket | null> {
   const { data, error } = await supabase
     .from("service_tickets")
-    .select("*, units(name), branches(name)")
+    .select("*, branches(name)")
     .eq("id", id)
     .single();
   if (error) return null;
-  return { ...data, unit_name: data.units?.name ?? "-", branch_name: data.branches?.name ?? "-" } as ServiceTicket;
+  return { ...data, branch_name: data.branches?.name ?? "-" } as ServiceTicket;
 }
 
 export async function createTicket(input: {
+  no_service: string;
   branch_id: string;
-  unit_id: string;
-  title: string;
-  description?: string;
-  priority: TicketPriority;
+  kategori: ServiceCategory;
+  kode_barang: string;
+  serial_number: string;
+  status?: TicketStatus;
+  posisi_unit?: string;
+  keterangan?: string;
   reported_by: string;
   reported_by_name: string;
 }): Promise<ServiceTicket> {
   const { data, error } = await supabase
     .from("service_tickets")
     .insert({
+      no_service: input.no_service.trim(),
       branch_id: input.branch_id,
-      unit_id: input.unit_id,
-      title: input.title.trim(),
-      description: input.description?.trim() || null,
-      priority: input.priority,
-      status: "baru",
+      kategori: input.kategori,
+      kode_barang: input.kode_barang.trim(),
+      serial_number: input.serial_number.trim(),
+      status: input.status ?? "baru",
+      posisi_unit: input.posisi_unit?.trim() || null,
+      keterangan: input.keterangan?.trim() || null,
       reported_by: input.reported_by,
       reported_by_name: input.reported_by_name,
     })
@@ -59,11 +65,10 @@ export async function createTicket(input: {
     .single();
   if (error) throw error;
 
-  // Initial log entry
   await addTicketUpdate(data.id, {
     note: "Tiket dibuat",
     status_from: null,
-    status_to: "baru",
+    status_to: data.status,
     created_by: input.reported_by,
     created_by_name: input.reported_by_name,
   });
@@ -143,4 +148,116 @@ export function isStalled(ticket: ServiceTicket, staleDays = 3): boolean {
   const lastUpdate = new Date(ticket.updated_at).getTime();
   const days = (Date.now() - lastUpdate) / (1000 * 60 * 60 * 24);
   return days >= staleDays;
+}
+
+// ─── Excel import ────────────────────────────────────────────────────────
+// Kolom sumber: #, No. Service, Kode Barang, SN, Cabang, Status, Lama di-service, Est, Posisi Unit, Keterangan
+export interface ExcelImportRow {
+  noService: string;
+  kodeBarang: string;
+  serialNumber: string;
+  cabangName: string;
+  statusRaw: string;
+  lamaDiservice: number | null;
+  estimasi: string | null;
+  posisiUnit: string | null;
+  keterangan: string | null;
+}
+
+export interface ImportResult {
+  inserted: number;
+  updated: number;
+  skipped: { row: number; noService: string; reason: string }[];
+}
+
+function mapExcelStatus(raw: string | null | undefined): TicketStatus {
+  const v = (raw ?? "").trim().toLowerCase();
+  if (!v || v === "-") return "baru";
+  if (v.includes("progress") || v.includes("proses")) return "diproses";
+  if (v.includes("sparepart") || v.includes("spare part") || v.includes("tunggu")) return "tunggu_sparepart";
+  if (v.includes("selesai") || v.includes("done") || v.includes("beres")) return "selesai";
+  return "baru";
+}
+
+export async function importTicketsFromExcel(
+  rows: ExcelImportRow[],
+  kategori: ServiceCategory,
+  branches: Branch[],
+  actor: { id: string; name: string }
+): Promise<ImportResult> {
+  const branchByName = new Map(branches.map((b) => [b.name.trim().toLowerCase(), b]));
+  const result: ImportResult = { inserted: 0, updated: 0, skipped: [] };
+
+  const validRows: { row: ExcelImportRow; index: number; branch: Branch }[] = [];
+  rows.forEach((row, index) => {
+    if (!row.noService?.trim()) {
+      result.skipped.push({ row: index + 1, noService: row.noService || "-", reason: "No. Service kosong" });
+      return;
+    }
+    const branch = branchByName.get(row.cabangName?.trim().toLowerCase());
+    if (!branch) {
+      result.skipped.push({ row: index + 1, noService: row.noService, reason: `Cabang "${row.cabangName}" tidak ditemukan di Master Data Cabang` });
+      return;
+    }
+    validRows.push({ row, index, branch });
+  });
+
+  if (validRows.length === 0) return result;
+
+  const noServiceList = validRows.map((v) => v.row.noService.trim());
+  const { data: existing, error: existingErr } = await supabase
+    .from("service_tickets")
+    .select("id, no_service")
+    .in("no_service", noServiceList);
+  if (existingErr) throw existingErr;
+
+  const existingByNoService = new Map((existing ?? []).map((r: any) => [r.no_service, r.id]));
+
+  const toInsert: Record<string, unknown>[] = [];
+  const toUpdate: { id: string; patch: Record<string, unknown> }[] = [];
+
+  for (const { row, branch } of validRows) {
+    const status = mapExcelStatus(row.statusRaw);
+    const existingId = existingByNoService.get(row.noService.trim());
+
+    const commonFields = {
+      branch_id: branch.id,
+      kategori,
+      kode_barang: row.kodeBarang?.trim() || "-",
+      serial_number: row.serialNumber?.trim() || "-",
+      status,
+      estimasi: row.estimasi?.trim() && row.estimasi.trim() !== "-" ? row.estimasi.trim() : null,
+      posisi_unit: row.posisiUnit?.trim() || null,
+      keterangan: row.keterangan?.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (existingId) {
+      toUpdate.push({ id: existingId as string, patch: commonFields });
+    } else {
+      const lama = row.lamaDiservice ?? 0;
+      const createdAt = new Date(Date.now() - lama * 24 * 60 * 60 * 1000).toISOString();
+      toInsert.push({
+        no_service: row.noService.trim(),
+        ...commonFields,
+        created_at: createdAt,
+        reported_by: actor.id,
+        reported_by_name: actor.name,
+      });
+    }
+  }
+
+  if (toInsert.length > 0) {
+    const { error } = await supabase.from("service_tickets").insert(toInsert);
+    if (error) throw error;
+    result.inserted = toInsert.length;
+  }
+
+  for (const { id, patch } of toUpdate) {
+    const { error } = await supabase.from("service_tickets").update(patch).eq("id", id);
+    if (error) throw error;
+  }
+  result.updated = toUpdate.length;
+
+  return result;
 }

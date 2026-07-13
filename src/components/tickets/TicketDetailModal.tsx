@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ServiceTicket, TicketUpdate, TicketStatus, TICKET_STATUS_LABEL, TICKET_STATUS_ORDER, PRIORITY_LABEL } from "@/types";
-import { listTicketUpdates, updateTicketStatus, addFollowUpNote } from "@/lib/tickets";
+import { ServiceTicket, TicketUpdate, TicketStatus, TICKET_STATUS_LABEL, TICKET_STATUS_ORDER, SERVICE_CATEGORY_LABEL } from "@/types";
+import { listTicketUpdates, updateTicketStatus, addFollowUpNote, ticketAgeDays } from "@/lib/tickets";
 import { useAuth } from "@/lib/auth";
 import { formatDateTime } from "@/lib/utils";
 import { X, Loader2, Send } from "lucide-react";
@@ -70,14 +70,17 @@ export default function TicketDetailModal({
       >
         <div className="flex items-start justify-between px-5 py-4 border-b border-slate-100">
           <div>
-            <p className="text-xs text-slate-400">{ticket.branch_name} · {ticket.unit_name}</p>
-            <h2 className="text-base font-bold text-slate-900">{ticket.title}</h2>
+            <p className="text-xs text-slate-400">{ticket.branch_name} · SN {ticket.serial_number}</p>
+            <h2 className="text-base font-bold text-slate-900">{ticket.no_service} · {ticket.kode_barang}</h2>
             <div className="flex gap-1.5 mt-1.5">
               <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${STATUS_COLOR[ticket.status]}`}>
                 {TICKET_STATUS_LABEL[ticket.status]}
               </span>
               <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                {PRIORITY_LABEL[ticket.priority]}
+                {SERVICE_CATEGORY_LABEL[ticket.kategori]}
+              </span>
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                umur {ticketAgeDays(ticket)} hari
               </span>
             </div>
           </div>
@@ -85,7 +88,9 @@ export default function TicketDetailModal({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-          {ticket.description && <p className="text-sm text-slate-600">{ticket.description}</p>}
+          {ticket.posisi_unit && <p className="text-xs text-slate-500">Posisi Unit: {ticket.posisi_unit}</p>}
+          {ticket.estimasi && <p className="text-xs text-slate-500">Estimasi: {ticket.estimasi}</p>}
+          {ticket.keterangan && <p className="text-sm text-slate-600">{ticket.keterangan}</p>}
 
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide pt-2">Riwayat Follow-up</p>
           {loading ? (

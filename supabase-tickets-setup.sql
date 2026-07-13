@@ -3,24 +3,46 @@
 -- Jalankan SETELAH supabase-auth-setup.sql dan supabase-master-data-setup.sql
 -- ============================================================
 
+-- Kolom mengikuti format data gudang servis (No. Service, Kode Barang, SN,
+-- Cabang, Status, Posisi Unit, Keterangan). "Lama di-service" tidak disimpan
+-- sebagai kolom — dihitung on-the-fly dari created_at (lihat ticketAgeDays di
+-- src/lib/tickets.ts) supaya selalu akurat & tetap jalan setelah data diimpor.
 create table if not exists public.service_tickets (
   id                uuid primary key default gen_random_uuid(),
+  no_service        text not null unique,
   branch_id         uuid not null references public.branches(id) on delete cascade,
-  unit_id           uuid not null references public.units(id) on delete cascade,
-  title             text not null,
-  description       text,
+  kategori          text not null default 'stok' check (kategori in ('stok','user')),
+  kode_barang       text not null,
+  serial_number     text not null,
   status            text not null default 'baru' check (status in ('baru','diproses','tunggu_sparepart','selesai')),
-  priority          text not null default 'normal' check (priority in ('rendah','normal','tinggi','urgent')),
+  estimasi          text,
+  posisi_unit       text,
+  keterangan        text,
   reported_by       uuid references auth.users(id),
   reported_by_name  text,
-  assigned_to_name  text,
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now(),
   resolved_at       timestamptz
 );
 
+-- Migrasi kalau tabel service_tickets sudah ada dari skema lama (title/unit_id/priority)
+alter table public.service_tickets drop column if exists unit_id;
+alter table public.service_tickets drop column if exists title;
+alter table public.service_tickets drop column if exists description;
+alter table public.service_tickets drop column if exists priority;
+alter table public.service_tickets drop column if exists assigned_to_name;
+alter table public.service_tickets add column if not exists no_service text;
+alter table public.service_tickets add column if not exists kategori text not null default 'stok';
+alter table public.service_tickets add column if not exists kode_barang text not null default '-';
+alter table public.service_tickets add column if not exists serial_number text not null default '-';
+alter table public.service_tickets add column if not exists estimasi text;
+alter table public.service_tickets add column if not exists posisi_unit text;
+alter table public.service_tickets add column if not exists keterangan text;
+create unique index if not exists service_tickets_no_service_key on public.service_tickets(no_service);
+
 create index if not exists idx_tickets_branch on public.service_tickets(branch_id);
 create index if not exists idx_tickets_status on public.service_tickets(status);
+create index if not exists idx_tickets_kategori on public.service_tickets(kategori);
 
 alter table public.service_tickets enable row level security;
 

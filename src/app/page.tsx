@@ -9,8 +9,8 @@ import PendingScreen from "@/components/auth/PendingScreen";
 import OverviewPanel from "@/components/dashboard/OverviewPanel";
 import TicketListPanel from "@/components/tickets/TicketListPanel";
 import NewTicketPanel from "@/components/tickets/NewTicketPanel";
+import ImportPanel from "@/components/tickets/ImportPanel";
 import BranchesPanel from "@/components/master/BranchesPanel";
-import UnitsPanel from "@/components/master/UnitsPanel";
 import { NAV, ADMIN_SECTION, ViewId, findSection, type NavSection } from "@/components/layout/workspaceNav";
 import { useAuth } from "@/lib/auth";
 
@@ -54,10 +54,10 @@ export default function Home() {
         return <TicketListPanel />;
       case "tickets-new":
         return <NewTicketPanel />;
+      case "tickets-import":
+        return <ImportPanel />;
       case "master-branches":
         return <BranchesPanel />;
-      case "master-units":
-        return <UnitsPanel branchScope={profile!.branch_scope ?? []} />;
       case "admin-users":
         return <UserManagementPanel />;
       default:

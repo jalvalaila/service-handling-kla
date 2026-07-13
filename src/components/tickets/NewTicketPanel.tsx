@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Branch, Unit, TicketPriority, PRIORITY_LABEL } from "@/types";
+import { Branch, ServiceCategory, SERVICE_CATEGORY_LABEL, TicketStatus, TICKET_STATUS_LABEL, TICKET_STATUS_ORDER } from "@/types";
 import { listBranches } from "@/lib/branches";
-import { listUnits } from "@/lib/units";
 import { createTicket } from "@/lib/tickets";
 import { useAuth } from "@/lib/auth";
 import { Loader2, CheckCircle2 } from "lucide-react";
@@ -11,12 +10,14 @@ import { Loader2, CheckCircle2 } from "lucide-react";
 export default function NewTicketPanel() {
   const { profile } = useAuth();
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]);
   const [branchId, setBranchId] = useState("");
-  const [unitId, setUnitId] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState<TicketPriority>("normal");
+  const [kategori, setKategori] = useState<ServiceCategory>("stok");
+  const [noService, setNoService] = useState("");
+  const [kodeBarang, setKodeBarang] = useState("");
+  const [serialNumber, setSerialNumber] = useState("");
+  const [status, setStatus] = useState<TicketStatus>("baru");
+  const [posisiUnit, setPosisiUnit] = useState("");
+  const [keterangan, setKeterangan] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -32,31 +33,31 @@ export default function NewTicketPanel() {
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (!branchId) return;
-    listUnits(branchId).then(setUnits);
-    setUnitId("");
-  }, [branchId]);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!profile || !branchId || !unitId || !title.trim()) return;
+    if (!profile || !branchId || !noService.trim() || !kodeBarang.trim() || !serialNumber.trim()) return;
     setBusy(true);
     setError(null);
     try {
       await createTicket({
+        no_service: noService,
         branch_id: branchId,
-        unit_id: unitId,
-        title,
-        description,
-        priority,
+        kategori,
+        kode_barang: kodeBarang,
+        serial_number: serialNumber,
+        status,
+        posisi_unit: posisiUnit,
+        keterangan,
         reported_by: profile.id,
         reported_by_name: profile.full_name ?? profile.email ?? "-",
       });
       setDone(true);
-      setTitle("");
-      setDescription("");
-      setPriority("normal");
+      setNoService("");
+      setKodeBarang("");
+      setSerialNumber("");
+      setStatus("baru");
+      setPosisiUnit("");
+      setKeterangan("");
       setTimeout(() => setDone(false), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal membuat tiket.");
@@ -67,7 +68,7 @@ export default function NewTicketPanel() {
 
   return (
     <div className="p-4 md:p-6 overflow-y-auto h-full max-w-xl">
-      <h1 className="text-lg font-bold text-slate-900 mb-1">Lapor Unit Bermasalah</h1>
+      <h1 className="text-lg font-bold text-slate-900 mb-1">Lapor Unit Servis</h1>
       <p className="text-sm text-slate-500 mb-5">Isi laporan, tim akan follow up progresnya lewat tiket ini.</p>
 
       <form onSubmit={handleSubmit} className="space-y-3 bg-white p-5 rounded-xl border border-slate-200">
@@ -79,42 +80,53 @@ export default function NewTicketPanel() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Unit</label>
-          <select value={unitId} onChange={(e) => setUnitId(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm">
-            <option value="">-- pilih unit --</option>
-            {units.map((u) => <option key={u.id} value={u.id}>{u.name}{u.code ? ` (${u.code})` : ""}</option>)}
-          </select>
-          {units.length === 0 && branchId && (
-            <p className="text-xs text-amber-600 mt-1">Belum ada unit terdaftar di cabang ini — tambahkan dulu di Master Data &gt; Unit.</p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Judul masalah</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Contoh: AC tidak dingin" required className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Detail (opsional)</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Prioritas</label>
-          <div className="flex gap-2 flex-wrap">
-            {(Object.keys(PRIORITY_LABEL) as TicketPriority[]).map((p) => (
+          <label className="block text-xs font-medium text-slate-500 mb-1">Kategori</label>
+          <div className="flex gap-2">
+            {(Object.keys(SERVICE_CATEGORY_LABEL) as ServiceCategory[]).map((k) => (
               <button
                 type="button"
-                key={p}
-                onClick={() => setPriority(p)}
+                key={k}
+                onClick={() => setKategori(k)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
-                  priority === p ? "bg-slate-900 text-white border-slate-900" : "border-slate-200 text-slate-600"
+                  kategori === k ? "bg-slate-900 text-white border-slate-900" : "border-slate-200 text-slate-600"
                 }`}
               >
-                {PRIORITY_LABEL[p]}
+                {SERVICE_CATEGORY_LABEL[k]}
               </button>
             ))}
           </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">No. Service</label>
+          <input value={noService} onChange={(e) => setNoService(e.target.value)} placeholder="Contoh: SRV/00051/202607" required className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Kode Barang</label>
+          <input value={kodeBarang} onChange={(e) => setKodeBarang(e.target.value)} placeholder="Contoh: Aspire Lite AL14-32P-370Z" required className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">SN (Serial Number)</label>
+          <input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} required className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Status</label>
+          <select value={status} onChange={(e) => setStatus(e.target.value as TicketStatus)} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm">
+            {TICKET_STATUS_ORDER.map((s) => <option key={s} value={s}>{TICKET_STATUS_LABEL[s]}</option>)}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Posisi Unit (opsional)</label>
+          <input value={posisiUnit} onChange={(e) => setPosisiUnit(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Keterangan</label>
+          <textarea value={keterangan} onChange={(e) => setKeterangan(e.target.value)} rows={3} placeholder="Kendala/masalah unit" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
         </div>
 
         {error && <p className="text-xs text-danger">{error}</p>}
@@ -123,7 +135,7 @@ export default function NewTicketPanel() {
         )}
 
         <button
-          disabled={busy || !unitId}
+          disabled={busy || !branchId}
           className="px-4 py-2.5 rounded-lg bg-brand text-slate-900 text-sm font-semibold flex items-center gap-2 disabled:opacity-60"
         >
           {busy && <Loader2 size={14} className="animate-spin" />}

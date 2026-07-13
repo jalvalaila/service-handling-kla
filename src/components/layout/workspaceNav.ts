@@ -2,8 +2,8 @@ export type ViewId =
   | "dash-overview"
   | "tickets-list"
   | "tickets-new"
+  | "tickets-import"
   | "master-branches"
-  | "master-units"
   | "admin-users";
 
 export interface NavItem {
@@ -30,6 +30,7 @@ export const NAV: NavSection[] = [
     items: [
       { id: "tickets-list", label: "Daftar Tiket", shortLabel: "Tiket" },
       { id: "tickets-new", label: "Lapor Unit Baru", shortLabel: "Lapor" },
+      { id: "tickets-import", label: "Import Excel", shortLabel: "Import" },
     ],
   },
   {
@@ -37,7 +38,6 @@ export const NAV: NavSection[] = [
     label: "Master Data",
     items: [
       { id: "master-branches", label: "Cabang", shortLabel: "Cabang" },
-      { id: "master-units", label: "Unit", shortLabel: "Unit" },
     ],
   },
 ];

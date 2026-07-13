@@ -2,7 +2,7 @@ export type TicketStatus = "baru" | "diproses" | "tunggu_sparepart" | "selesai";
 
 export const TICKET_STATUS_LABEL: Record<TicketStatus, string> = {
   baru: "Baru",
-  diproses: "Diproses",
+  diproses: "On Progress",
   tunggu_sparepart: "Tunggu Sparepart",
   selesai: "Selesai",
 };
@@ -18,30 +18,30 @@ export interface Branch {
   created_at: string;
 }
 
-export type StokPenjualan = "stok" | "penjualan";
+export type ServiceCategory = "stok" | "user";
 
-export const STOK_PENJUALAN_LABEL: Record<StokPenjualan, string> = {
+export const SERVICE_CATEGORY_LABEL: Record<ServiceCategory, string> = {
   stok: "Stok",
-  penjualan: "Penjualan",
+  user: "User",
 };
 
 export interface ServiceTicket {
   id: string;
+  no_service: string;
   branch_id: string;
-  tanggal_masuk: string;
-  stok_penjualan: StokPenjualan;
-  brand: string;
-  laptop_type: string;
+  kategori: ServiceCategory;
+  kode_barang: string;
   serial_number: string;
-  kendala: string;
-  posisi_unit: string;
-  keterangan: string | null;
   status: TicketStatus;
+  estimasi: string | null;
+  posisi_unit: string | null;
+  keterangan: string | null;
   reported_by: string | null;
   reported_by_name: string | null;
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
+  // joined fields (filled client-side)
   branch_name?: string;
 }
 
